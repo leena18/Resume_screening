@@ -5,7 +5,6 @@ from typing import List, Dict, Any, Optional
 from bson.regex import Regex
 from bson import ObjectId
 from bson.errors import InvalidId
-from typing import Optional, Dict, Any
 from fastapi import HTTPException
 from pymongo.errors import PyMongoError
 
@@ -70,10 +69,8 @@ class MongoFilter:
                     })
                     
                 # Alternative approach: Check if any skill key matches (case-insensitive)
-                # This uses $expr with $anyElementTrue for object keys
                 skills_or_conditions = []
                 for skill in filters["skills"]:
-                    # Check each skill against all keys in core_technical_skills_claimed
                     skills_or_conditions.append({
                         "$expr": {
                             "$gt": [
@@ -98,7 +95,6 @@ class MongoFilter:
                 
                 if skills_or_conditions:
                     match_conditions["$or"] = skills_or_conditions
-                    # Merge match_conditions into query
                     query.update(match_conditions)
 
             # Location filter
@@ -126,11 +122,12 @@ class MongoFilter:
                 },
                 # Apply filters
                 {"$match": query},
-                # Add experience filter with default value of 0
+                # Add experience filter for range x-2 to x+2 (inclusive), ensuring non-negative lower bound
                 {
                     "$match": {
                         "total_experience_float": {
-                            "$gte": filters.get("experience", 0)
+                            "$gte": max(0, filters.get("experience", 0) - 2),
+                            "$lte": filters.get("experience", 0) + 2
                         }
                     }
                 },
