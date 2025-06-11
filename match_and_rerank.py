@@ -20,7 +20,7 @@ from typing import List, Dict, Any
 #     print(f"Error loading config.yml: {e}")
 #     sys.exit(1)
 # Direct assignment without reading from config
-CHROMA_PERSIST_DIR = "D:\\Resume_Screening\\backend\\chroma_persist"
+CHROMA_PERSIST_DIR = "chroma_persist"
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 CROSS_ENCODER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 TOP_K = 30

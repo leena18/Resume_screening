@@ -54,24 +54,13 @@ class MongoFilter:
             # Build query dynamically for filtered data
             query = {}
 
-            # Skills filter - check if any of the requested skills exist as keys in core_technical_skills_claimed
+            # Skills filter - check if ALL requested skills have "Expert" level
             if filters.get("skills"):
-                match_conditions = {}
                 skills_conditions = []
+                
                 for skill in filters["skills"]:
-                    # Create case-insensitive field existence check
-                    skill_key_pattern = f"^{re.escape(skill)}$"
-                    skills_conditions.append({
-                        f"core_technical_skills_claimed": {
-                            "$regex": skill_key_pattern,
-                            "$options": "i"
-                        }
-                    })
-                    
-                # Alternative approach: Check if any skill key matches (case-insensitive)
-                skills_or_conditions = []
-                for skill in filters["skills"]:
-                    skills_or_conditions.append({
+                    # Create condition to check if the skill exists with "Expert" level (case-insensitive)
+                    skill_condition = {
                         "$expr": {
                             "$gt": [
                                 {
@@ -79,11 +68,24 @@ class MongoFilter:
                                         "$filter": {
                                             "input": {"$objectToArray": "$core_technical_skills_claimed"},
                                             "cond": {
-                                                "$regexMatch": {
-                                                    "input": "$$this.k",
-                                                    "regex": f"^{re.escape(skill)}$",
-                                                    "options": "i"
-                                                }
+                                                "$and": [
+                                                    # Check if skill name matches (case-insensitive)
+                                                    {
+                                                        "$regexMatch": {
+                                                            "input": "$$this.k",
+                                                            "regex": f"^{re.escape(skill)}$",
+                                                            "options": "i"
+                                                        }
+                                                    },
+                                                    # Check if skill level is "Expert" (case-insensitive)
+                                                    {
+                                                        "$regexMatch": {
+                                                            "input": "$$this.v",
+                                                            "regex": "^(Expert|Intermediate)$",
+                                                            "options": "i"
+                                                        }
+                                                    }
+                                                ]
                                             }
                                         }
                                     }
@@ -91,11 +93,15 @@ class MongoFilter:
                                 0
                             ]
                         }
-                    })
+                    }
+                    skills_conditions.append(skill_condition)
                 
-                if skills_or_conditions:
-                    match_conditions["$or"] = skills_or_conditions
-                    query.update(match_conditions)
+                # All skills must be Expert level (AND condition)
+                if skills_conditions:
+                    if len(skills_conditions) == 1:
+                        query.update(skills_conditions[0])
+                    else:
+                        query["$and"] = skills_conditions
 
             # Location filter
             if filters.get("locations"):
